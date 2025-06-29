@@ -1,0 +1,7 @@
+# pycache
+__pycache__/
+**/__pycache__
+
+/build/
+.idea/
+data_mod/
