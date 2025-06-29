@@ -156,7 +156,7 @@ class VexiiRiscv(CPU):
         vdir = get_data_mod("cpu", "vexiiriscv").data_location
         ndir = os.path.join(vdir, "ext", "VexiiRiscv")
 
-        NaxRiscv.git_setup("VexiiRiscv", ndir, "https://github.com/SpinalHDL/VexiiRiscv.git", "dev", "d1c742d", args.update_repo)
+        NaxRiscv.git_setup("VexiiRiscv", ndir, "https://github.com/jerrita/VexiiRiscv", "smepmp", "79f8770", args.update_repo)
 
         if not args.cpu_variant:
             args.cpu_variant = "standard"
