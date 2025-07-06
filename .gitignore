@@ -11,4 +11,4 @@ data_mod/*
 *.egg-info/
 
 vivado*
-df_runtime.txt
+dfx_runtime.txt

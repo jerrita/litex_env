@@ -156,7 +156,7 @@ class VexiiRiscv(CPU):
         vdir = get_data_mod("cpu", "vexiiriscv").data_location
         ndir = os.path.join(vdir, "ext", "VexiiRiscv")
 
-        NaxRiscv.git_setup("VexiiRiscv", ndir, "https://github.com/jerrita/VexiiRiscv", "smepmp", "79f8770", args.update_repo)
+        NaxRiscv.git_setup("VexiiRiscv", ndir, "https://github.com/jerrita/VexiiRiscv", "smepmp", "0750fffc", args.update_repo)
 
         if not args.cpu_variant:
             args.cpu_variant = "standard"
@@ -174,6 +174,7 @@ class VexiiRiscv(CPU):
 
         if args.cpu_variant in ["debian"]:
             VexiiRiscv.vexii_args += " --xlen=64 --with-rvc --with-rvf --with-rvd --fma-reduced-accuracy --fpu-ignore-subnormal"
+            VexiiRiscv.vexii_args += " --pmp-size=8"
 
         if args.cpu_variant in ["linux", "debian"]:
             VexiiRiscv.vexii_args += " --with-btb --with-ras --with-gshare"

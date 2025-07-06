@@ -13,17 +13,23 @@ from litex.soc.cores.led import LedChaser
 from litedram.modules import MT41K256M16
 from litedram.phy import s7ddrphy
 
-from liteeth.phy.mii import LiteEthPHYMII
+from liteeth.phy.s7rgmii import LiteEthPHYRGMII
+from liteeth.mac import LiteEthMAC
+from liteeth.core import LiteEthUDPIPCore
 
 # CRG (Clock and Reset Generation) -----------------------------------------------------------------
 
 class _CRG(Module):
-    def __init__(self, platform, sys_clk_freq):
+    def __init__(self, platform, sys_clk_freq, with_ethernet=False):
         self.rst = Signal()
         self.clock_domains.cd_sys = ClockDomain()
         self.clock_domains.cd_sys4x = ClockDomain()
         self.clock_domains.cd_sys4x_dqs = ClockDomain()
         self.clock_domains.cd_idelay = ClockDomain()
+        
+        # Ethernet clock domain
+        if with_ethernet:
+            self.clock_domains.cd_eth = ClockDomain()
     
         # Input clock
         clk50 = platform.request("clk50")
@@ -36,6 +42,8 @@ class _CRG(Module):
         pll.create_clkout(self.cd_sys4x, 4*sys_clk_freq)
         pll.create_clkout(self.cd_sys4x_dqs, 4*sys_clk_freq, phase=90)
         pll.create_clkout(self.cd_idelay, 200e6)
+        if with_ethernet:
+            pll.create_clkout(self.cd_eth, 125e6)
         platform.add_false_path_constraints(self.cd_sys.clk, pll.clkin) # Ignore sys_clk to pll.clkin path
 
         # IDELAY
@@ -44,14 +52,21 @@ class _CRG(Module):
 # BaseSoC ------------------------------------------------------------------------------------------
 
 class BaseSoC(SoCCore):
-    def __init__(self, sys_clk_freq=int(50e6), with_ethernet=False, with_etherbone=False, with_ddr3=True, **kwargs):
+    def __init__(self, sys_clk_freq=int(50e6), 
+                 with_ethernet=True,
+                 with_etherbone=False, 
+                 eth_ip="192.168.100.253",
+                 remote_ip="192.168.100.216",
+                 eth_dynamic_ip=False,
+                 with_ddr3=True, 
+                 **kwargs):
         platform = microphase_a7lite.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
         SoCCore.__init__(self, platform, sys_clk_freq, ident="LiteX SoC on Microphase A7 Lite", **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
-        self.submodules.crg = _CRG(platform, sys_clk_freq)
+        self.submodules.crg = _CRG(platform, sys_clk_freq, with_ethernet=(with_ethernet or with_etherbone))
 
         # DDR3 SDRAM -------------------------------------------------------------------------------
         if with_ddr3:
@@ -69,22 +84,23 @@ class BaseSoC(SoCCore):
                 l2_cache_size = kwargs.get("l2_size", 8192)
             )
 
+        # Ethernet ---------------------------------------------------------------------------------
+        if with_ethernet or with_etherbone:
+            self.submodules.ethphy = LiteEthPHYRGMII(
+                clock_pads = platform.request("eth_clocks"),
+                pads       = platform.request("eth"),
+                tx_delay   = 1e-9,
+                rx_delay   = 1e-9,
+                with_hw_init_reset = False)
+            if with_ethernet:
+                self.add_ethernet(phy=self.ethphy, dynamic_ip=eth_dynamic_ip, remote_ip=remote_ip, local_ip=eth_ip)
+            if with_etherbone:
+                self.add_etherbone(phy=self.ethphy)
+
         # Leds -------------------------------------------------------------------------------------
         self.submodules.leds = LedChaser(
             pads         = platform.request_all("user_led"),
             sys_clk_freq = sys_clk_freq)
-        self.add_csr("leds")
-
-        # Ethernet / Etherbone ---------------------------------------------------------------------
-        if with_ethernet or with_etherbone:
-            self.submodules.ethphy = LiteEthPHYMII(
-                clock_pads = self.platform.request("eth_clocks"),
-                pads       = self.platform.request("eth"))
-            self.add_csr("ethphy")
-            if with_ethernet:
-                self.add_ethernet(phy=self.ethphy)
-            if with_etherbone:
-                self.add_etherbone(phy=self.ethphy)
 
 # Build --------------------------------------------------------------------------------------------
 
@@ -92,20 +108,22 @@ def main():
     from litex.build.parser import LiteXArgumentParser
     parser = LiteXArgumentParser(platform=microphase_a7lite.Platform, description="LiteX SoC on MicroPhase A7Lite.")
     parser.add_argument("--sys-clk-freq",    default=50e6,       help="System clock frequency (default: 50MHz)")
-    parser.add_argument("--with-ethernet",   action="store_true", help="Enable Ethernet support")
-    parser.add_argument("--with-etherbone",  action="store_true", help="Enable Etherbone support")
+    parser.add_argument("--with-ethernetbone",  action="store_true", help="Enable Etherbone support")
     parser.add_argument("--with-ddr3",       action="store_true", default=True, help="Enable DDR3 SDRAM support (default: True)")
+    parser.set_defaults(
+        cpu_type="vexiiriscv",
+        cpu_variant="debian",
+        update_repo="no"
+    )
     args = parser.parse_args()
 
     soc = BaseSoC(
         sys_clk_freq   = args.sys_clk_freq,
-        with_ethernet  = args.with_ethernet,
-        with_etherbone = args.with_etherbone,
         with_ddr3      = args.with_ddr3,
         **parser.soc_argdict
     )
     
-    builder = Builder(soc, **builder_argdict(args))
+    builder = Builder(soc, **parser.builder_argdict)
     if args.build:
         builder.build(**parser.toolchain_argdict)
 
