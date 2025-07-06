@@ -10,3 +10,5 @@ data_mod/*
 
 *.egg-info/
 
+vivado*
+df_runtime.txt
