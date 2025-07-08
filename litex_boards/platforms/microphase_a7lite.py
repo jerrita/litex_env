@@ -55,6 +55,15 @@ _io = [
         IOStandard("LVCMOS33")
     ),
 
+    # SPI SD Card
+    ("spisdcard", 0,
+        Subsignal("clk", Pins("U7")),
+        Subsignal("mosi", Pins("AA8")),  # CMD pin used as MOSI
+        Subsignal("miso", Pins("W9")),   # DATA0 pin used as MISO
+        Subsignal("cs_n", Pins("Y9")),   # DATA3 pin used as CS
+        IOStandard("LVCMOS33")
+    ),
+
     # HDMI
     ("hdmi", 0,
         Subsignal("clk_p", Pins("L19")),

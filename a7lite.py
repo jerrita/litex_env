@@ -14,8 +14,9 @@ from litedram.modules import MT41K256M16
 from litedram.phy import s7ddrphy
 
 from liteeth.phy.s7rgmii import LiteEthPHYRGMII
-from liteeth.mac import LiteEthMAC
-from liteeth.core import LiteEthUDPIPCore
+
+from litesdcard.phy import SDPHY
+from litesdcard.core import SDCore
 
 # CRG (Clock and Reset Generation) -----------------------------------------------------------------
 
@@ -58,7 +59,8 @@ class BaseSoC(SoCCore):
                  eth_ip="192.168.100.253",
                  remote_ip="192.168.100.216",
                  eth_dynamic_ip=False,
-                 with_ddr3=True, 
+                 with_ddr3=True,
+                 with_sdcard=True,
                  **kwargs):
         platform = microphase_a7lite.Platform()
 
@@ -96,6 +98,10 @@ class BaseSoC(SoCCore):
                 self.add_ethernet(phy=self.ethphy, dynamic_ip=eth_dynamic_ip, remote_ip=remote_ip, local_ip=eth_ip)
             if with_etherbone:
                 self.add_etherbone(phy=self.ethphy)
+
+        # SD Card ----------------------------------------------------------------------------------
+        if with_sdcard:
+            self.add_spi_sdcard()
 
         # Leds -------------------------------------------------------------------------------------
         self.submodules.leds = LedChaser(
